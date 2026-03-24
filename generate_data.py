@@ -47,6 +47,7 @@ last_names = ["Popescu","Ionescu","Radu","Dumitru","Stoica","Gheorghe","Stan",
 domains = ["gmail.com","yahoo.com","outlook.com","example.com"]
 
 countries = [
+    # --- EUROPA ---
     {'name': 'Romania', 'code': 'RO', 'cities': [
         {'name': 'Bucuresti', 'airports': [('OTP', 'Henri Coanda Intl')]},
         {'name': 'Cluj-Napoca', 'airports': [('CLJ', 'Avram Iancu')]},
@@ -58,7 +59,15 @@ countries = [
     {'name': 'Germany', 'code': 'DE', 'cities': [{'name': 'Frankfurt', 'airports': [('FRA', 'Frankfurt am Main')]}]},
     {'name': 'Netherlands', 'code': 'NL', 'cities': [{'name': 'Amsterdam', 'airports': [('AMS', 'Schiphol')]}]},
     {'name': 'Spain', 'code': 'ES', 'cities': [{'name': 'Barcelona', 'airports': [('BCN', 'El Prat')]}]},
-    {'name': 'UAE', 'code': 'AE', 'cities': [{'name': 'Dubai', 'airports': [('DXB', 'Dubai International')]}]}
+    
+    # --- AMERICA ---
+    {'name': 'United States', 'code': 'US', 'cities': [
+        {'name': 'New York', 'airports': [('JFK', 'John F. Kennedy')]},
+        {'name': 'Los Angeles', 'airports': [('LAX', 'Los Angeles Intl')]},
+        {'name': 'Miami', 'airports': [('MIA', 'Miami Intl')]}
+    ]},
+    {'name': 'Canada', 'code': 'CA', 'cities': [{'name': 'Toronto', 'airports': [('YYZ', 'Toronto Pearson')]}]},
+    {'name': 'Brazil', 'code': 'BR', 'cities': [{'name': 'Sao Paulo', 'airports': [('GRU', 'Guarulhos Intl')]}]}
 ]
 
 occupied_seats = {}
