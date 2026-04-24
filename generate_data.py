@@ -76,7 +76,7 @@ def get_available_seat(flight_id, plane_model):
     """Genereaza un loc valid si liber specific pentru modelul avionului"""
     if flight_id not in occupied_seats:
         occupied_seats[flight_id] = set()
-   
+    
     specs = PLANE_SPECS.get(plane_model, {'cols': ['A','B','C','D','E','F'], 'rows': 30})
     available_cols = specs['cols']
     max_rows = specs['rows']
@@ -122,7 +122,8 @@ for i in range(NUM_USERS):
     phone = f"07{random.randint(10000000,99999999)}"
     reg_date = random_date(datetime(2020,1,1), datetime(2023,1,1))
     rol = roles[i]
-    statements.append(f"INSERT INTO UTILIZATOR (nume, prenume, email, parola, telefon, data_inregistrare, rol) SELECT {escape_sql(lname)}, {escape_sql(fname)}, {escape_sql(email)}, 'parola123', {escape_sql(phone)}, {escape_sql(reg_date)}, '{rol}' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM UTILIZATOR WHERE email = {escape_sql(email)});")
+    regiune_cont = random.choice(['AM', 'EU'])
+    statements.append(f"INSERT INTO UTILIZATOR (nume, prenume, email, parola, telefon, data_inregistrare, rol, regiune_cont) SELECT {escape_sql(lname)}, {escape_sql(fname)}, {escape_sql(email)}, 'parola123', {escape_sql(phone)}, {escape_sql(reg_date)}, '{rol}', '{regiune_cont}' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM UTILIZATOR WHERE email = {escape_sql(email)});")
 
 statements.append("")
 statements.append("-- PASAGERI")
@@ -259,9 +260,10 @@ for i in range(NUM_RESERVATIONS):
         res_status = 'CONFIRMATA'
         pay_status = 'ACCEPTATA'
 
+    regiune_vanzare = random.choice(['AM', 'EU'])
 
     statements.append(f"  -- Rezervare {i+1}")
-    statements.append(f"  INSERT INTO REZERVARE (id_user, data_rezervare, total_de_plata, status) VALUES ((SELECT id_user FROM (SELECT id_user, ROWNUM rn FROM UTILIZATOR ORDER BY id_user) WHERE rn = {user_idx}), {escape_sql(res_date)}, {total_price}, '{res_status}') RETURNING id_rezervare INTO v_rez_id;")
+    statements.append(f"  INSERT INTO REZERVARE (id_user, data_rezervare, regiune_vanzare, total_de_plata, status) VALUES ((SELECT id_user FROM (SELECT id_user, ROWNUM rn FROM UTILIZATOR ORDER BY id_user) WHERE rn = {user_idx}), {escape_sql(res_date)}, '{regiune_vanzare}', {total_price}, '{res_status}') RETURNING id_rezervare INTO v_rez_id;")
     statements.append(f"  INSERT INTO PLATA (id_rezervare, suma_achitata, data_plata, metoda_plata, status) VALUES (v_rez_id, {total_price}, {escape_sql(res_date)}, '{pay_method}', '{pay_status}');")
     
     for ticket in tickets:
