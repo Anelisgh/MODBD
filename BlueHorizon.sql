@@ -23,7 +23,6 @@ CREATE TABLE UTILIZATOR (
     telefon VARCHAR2(20),
     data_inregistrare DATE DEFAULT SYSDATE NOT NULL,
     rol VARCHAR2(20) DEFAULT 'CLIENT' NOT NULL,
-    regiune_cont VARCHAR2(2), -- Atribut informational (BI/GDPR)
     CONSTRAINT chk_email CHECK (REGEXP_LIKE(email, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')),
     CONSTRAINT chk_rol CHECK (rol IN ('CLIENT', 'ADMIN')),
     CONSTRAINT chk_regiune_cont CHECK (regiune_cont IN ('AM', 'EU'))
