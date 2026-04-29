@@ -71,7 +71,8 @@ CREATE TABLE UTILIZATOR_DATA (
     nume VARCHAR2(100) NOT NULL,
     prenume VARCHAR2(100) NOT NULL,
     telefon VARCHAR2(20),
-    data_inregistrare DATE NOT NULL
+    data_inregistrare DATE NOT NULL,
+    CONSTRAINT FK_USER_VERT_LOCAL FOREIGN KEY (id_user) REFERENCES UTILIZATOR_SEC(id_user)
 );
 
 -- 4. FRAGMENTE ORIZONTALE (Tranzactii AM - ID-uri IMPARE)
@@ -157,7 +158,9 @@ CREATE TABLE ZBOR (
     durata_estimata NUMBER NOT NULL,
     pret_standard NUMBER(10,2) NOT NULL,
     status VARCHAR2(20) NOT NULL,
-    CONSTRAINT fk_zbor_avion_eu FOREIGN KEY (id_avion) REFERENCES AVION(id_avion)
+    CONSTRAINT fk_zbor_avion_eu FOREIGN KEY (id_avion) REFERENCES AVION(id_avion),
+    CONSTRAINT fk_zbor_dep_eu FOREIGN KEY (id_aeroport_plecare) REFERENCES AEROPORT(id_aeroport),
+    CONSTRAINT fk_zbor_arr_eu FOREIGN KEY (id_aeroport_sosire) REFERENCES AEROPORT(id_aeroport)
 );
 
 -- 2. FRAGMENT VERTICAL REPLICAT (Utilizator Data)
@@ -201,3 +204,4 @@ CREATE TABLE BILET_EU (
     CONSTRAINT fk_bil_rez_eu FOREIGN KEY (id_rezervare) REFERENCES REZERVARE_EU(id_rezervare),
     CONSTRAINT fk_bil_zbor_eu FOREIGN KEY (id_zbor) REFERENCES ZBOR(id_zbor)
 );
+
