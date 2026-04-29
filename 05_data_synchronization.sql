@@ -1,10 +1,13 @@
 -- ex 5
+-- Asigurarea sincronizarii datelor pentru replicate
+
+-- METODA 1: SINCRONIZARE PRIN TRIGGERE
 
 ---------------------------
 -- TARA
 ---------------------------
 
--- trigger: BD_AM
+-- trigger: BD_AM 
 CREATE OR REPLACE TRIGGER trg_sync_tara_am_eu
 AFTER INSERT OR UPDATE OR DELETE ON TARA
 FOR EACH ROW
@@ -180,3 +183,33 @@ SELECT *
 FROM UTILIZATOR_DATA
 WHERE id_user = 999;
 
+-- METODA 2: SINCRONIZARE PRIN VIZUALIZARI MATERIALIZATE
+--------------
+-- ZBOR
+--------------
+
+-- BD_AM:
+-- creare log pentru a inregistra modificarile
+CREATE MATERIALIZED VIEW LOG ON ZBOR
+WITH PRIMARY KEY
+INCLUDING NEW VALUES;
+
+-- BD_EU
+-- creare MView peste tabela existenta
+CREATE MATERIALIZED VIEW ZBOR
+ON PREBUILT TABLE
+REFRESH FAST ON DEMAND
+WITH PRIMARY KEY
+AS SELECT * FROM ZBOR@link_bd_am;
+
+-- TESTARE METODA 2 (Refresh la MView)
+
+-- 1. pe BD_AM: modificam statusul zborului
+UPDATE ZBOR SET status = 'INTARZIAT' WHERE id_zbor = 1;
+COMMIT;
+
+-- 2. pe BD_EU: se declanseaza actualizarea datelor din fișierul LOG
+EXECUTE DBMS_MVIEW.REFRESH(UPPER('ZBOR'), 'F');
+
+-- 3. pe BD_EU: se verifica preluarea noului status
+SELECT status FROM ZBOR WHERE id_zbor = 1;
