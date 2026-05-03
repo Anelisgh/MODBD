@@ -7,7 +7,7 @@
 -- TARA
 ---------------------------
 
--- trigger: BD_AM 
+-- trigger: BD_AM
 CREATE OR REPLACE TRIGGER trg_sync_tara_am_eu
 AFTER INSERT OR UPDATE OR DELETE ON TARA
 FOR EACH ROW
@@ -30,19 +30,14 @@ END;
 /
 
 -- testare insert: BD_AM
-INSERT INTO TARA (id_tara, nume_tara, cod_iso_2)
-VALUES (999, 'TEST_SYNC', 'TS');
-
+INSERT INTO TARA (id_tara, nume_tara, cod_iso_2) VALUES (999, 'TEST_SYNC', 'TS');
 COMMIT;
 
 -- verificare insert: BD_EU
 SELECT * FROM TARA WHERE id_tara = 999;
 
 -- test update: BD_AM
-UPDATE TARA
-SET nume_tara = 'TEST_SYNC_UPDATED'
-WHERE id_tara = 999;
-
+UPDATE TARA SET nume_tara = 'TEST_SYNC_UPDATED' WHERE id_tara = 999;
 COMMIT;
 
 -- verificare update: BD_EU
@@ -50,15 +45,18 @@ SELECT * FROM TARA WHERE id_tara = 999;
 
 -- test delete: BD_AM
 DELETE FROM TARA WHERE id_tara = 999;
-
 COMMIT;
 
 -- verificare delete: BD_EU
 SELECT * FROM TARA WHERE id_tara = 999;
 
+---------------------------
+-- ORAS
 ------------------
 -- AVION
 ------------------
+
+
 -- trigger: BD_AM
 CREATE OR REPLACE TRIGGER trg_sync_avion_am_eu
 AFTER INSERT OR UPDATE OR DELETE ON AVION
@@ -73,9 +71,9 @@ BEGIN
     ELSIF UPDATING THEN
         UPDATE AVION@link_bd_eu
         SET numar_inmatriculare = :NEW.numar_inmatriculare,
-            model = :NEW.model,
-            capacitate = :NEW.capacitate,
-            an_fabricatie = :NEW.an_fabricatie
+            model               = :NEW.model,
+            capacitate          = :NEW.capacitate,
+            an_fabricatie       = :NEW.an_fabricatie
         WHERE id_avion = :OLD.id_avion;
 
     ELSIF DELETING THEN
@@ -88,36 +86,24 @@ END;
 -- test insert: BD_AM
 INSERT INTO AVION (id_avion, numar_inmatriculare, model, capacitate, an_fabricatie)
 VALUES (999, 'TEST999', 'TEST_MODEL', 100, 2020);
-
 COMMIT;
 
 -- verificare insert: BD_EU
-SELECT * 
-FROM AVION
-WHERE id_avion = 999;
+SELECT * FROM AVION WHERE id_avion = 999;
 
 -- test update: BD_AM
-UPDATE AVION
-SET model = 'TEST_MODEL_UPDATED'
-WHERE id_avion = 999;
-
+UPDATE AVION SET model = 'TEST_MODEL_UPDATED' WHERE id_avion = 999;
 COMMIT;
 
 -- verificare update: BD_EU
-SELECT * 
-FROM AVION
-WHERE id_avion = 999;
+SELECT * FROM AVION WHERE id_avion = 999;
 
 -- test delete: BD_AM
-DELETE FROM AVION
-WHERE id_avion = 999;
-
+DELETE FROM AVION WHERE id_avion = 999;
 COMMIT;
 
 -- verificare delete: BD_EU
-SELECT * 
-FROM AVION
-WHERE id_avion = 999;
+SELECT * FROM AVION WHERE id_avion = 999;
 
 ---------------------------
 -- UTILIZATOR_DATA
@@ -136,9 +122,9 @@ BEGIN
 
     ELSIF UPDATING THEN
         UPDATE UTILIZATOR_DATA@link_bd_eu
-        SET nume = :NEW.nume,
-            prenume = :NEW.prenume,
-            telefon = :NEW.telefon,
+        SET nume              = :NEW.nume,
+            prenume           = :NEW.prenume,
+            telefon           = :NEW.telefon,
             data_inregistrare = :NEW.data_inregistrare
         WHERE id_user = :OLD.id_user;
 
@@ -152,36 +138,24 @@ END;
 -- testare insert: BD_AM
 INSERT INTO UTILIZATOR_DATA (id_user, nume, prenume, telefon, data_inregistrare)
 VALUES (999, 'TEST_NUME', 'TEST_PRENUME', '0700000000', SYSDATE);
-
 COMMIT;
 
 -- verificare insert: BD_EU
-SELECT *
-FROM UTILIZATOR_DATA
-WHERE id_user = 999;
+SELECT * FROM UTILIZATOR_DATA WHERE id_user = 999;
 
 -- testare update: BD_AM
-UPDATE UTILIZATOR_DATA
-SET telefon = '0711111111'
-WHERE id_user = 999;
-
+UPDATE UTILIZATOR_DATA SET telefon = '0711111111' WHERE id_user = 999;
 COMMIT;
 
 -- verificare update: BD_EU
-SELECT *
-FROM UTILIZATOR_DATA
-WHERE id_user = 999;
+SELECT * FROM UTILIZATOR_DATA WHERE id_user = 999;
 
 -- testare delete: BD_AM
-DELETE FROM UTILIZATOR_DATA
-WHERE id_user = 999;
-
+DELETE FROM UTILIZATOR_DATA WHERE id_user = 999;
 COMMIT;
 
 -- verificare delete BD_EU
-SELECT *
-FROM UTILIZATOR_DATA
-WHERE id_user = 999;
+SELECT * FROM UTILIZATOR_DATA WHERE id_user = 999;
 
 -- METODA 2: SINCRONIZARE PRIN VIZUALIZARI MATERIALIZATE
 --------------
@@ -208,7 +182,7 @@ AS SELECT * FROM ZBOR@link_bd_am;
 UPDATE ZBOR SET status = 'INTARZIAT' WHERE id_zbor = 1;
 COMMIT;
 
--- 2. pe BD_EU: se declanseaza actualizarea datelor din fișierul LOG
+-- 2. pe BD_EU: se declanseaza actualizarea datelor din fisierul LOG
 EXECUTE DBMS_MVIEW.REFRESH(UPPER('ZBOR'), 'F');
 
 -- 3. pe BD_EU: se verifica preluarea noului status
