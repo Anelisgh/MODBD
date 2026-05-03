@@ -1,46 +1,42 @@
--- conetat ca sys
--- 1. Crearea schemei pentru SERVERUL AMERICA (Nod central)
+-- =========================================================================
+-- 1. CREAREA UTILIZATORILOR (SCHEMELOR)
+-- =========================================================================
+-- rulat cu userul sys
+
+-- A. BAZA DE DATE SURSĂ (Bdd_all)
+CREATE USER BLUEHORIZON IDENTIFIED BY parola_sursa DEFAULT TABLESPACE users QUOTA UNLIMITED ON users;
+GRANT CONNECT, RESOURCE, CREATE TABLE TO BLUEHORIZON;
+
+-- B. SERVERUL AMERICA (Bd_am) - Nodul Central
 CREATE USER BD_AM IDENTIFIED BY parola_am DEFAULT TABLESPACE users QUOTA UNLIMITED ON users;
 GRANT CONNECT, RESOURCE TO BD_AM;
-GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW, CREATE TRIGGER, CREATE SEQUENCE TO BD_AM;
-GRANT CREATE DATABASE LINK TO BD_AM; -- Esential pentru a comunica cu Europa
+GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW, CREATE TRIGGER, CREATE SEQUENCE, CREATE DATABASE LINK TO BD_AM;
 
--- 2. Crearea schemei pentru SERVERUL EUROPA (Nod local)
-CREATE USER BD_EU IDENTIFIED BY parola_eu DEFAULT TABLESPACE users QUOTA UNLIMITED ON users;
-GRANT CONNECT, RESOURCE TO BD_EU;
-GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW, CREATE TRIGGER, CREATE SEQUENCE TO BD_EU;
-GRANT CREATE DATABASE LINK TO BD_EU; -- Esential pentru a comunica cu America
-
--- 3. Crearea schemei GLOBALE (Nivelul de transparenta)
+-- C. SCHEMA GLOBALĂ - Nivelul de Transparență
 CREATE USER BD_GLOBAL IDENTIFIED BY parola_global DEFAULT TABLESPACE users QUOTA UNLIMITED ON users;
 GRANT CONNECT, RESOURCE TO BD_GLOBAL;
-GRANT CREATE SESSION, CREATE VIEW, CREATE SYNONYM TO BD_GLOBAL;
-GRANT CREATE DATABASE LINK TO BD_GLOBAL;
+GRANT CREATE SESSION, CREATE VIEW, CREATE SYNONYM, CREATE DATABASE LINK TO BD_GLOBAL;
 
--- Acordăm drepturi de citire schemei sursă (BLUEHORIZON) către noile scheme
--- pentru a putea face ulterior INSERT INTO ... SELECT din ea
+-- D. SERVERUL EUROPA (Bd_eu) - Nodul Local
+CREATE USER BD_EU IDENTIFIED BY parola_eu DEFAULT TABLESPACE users QUOTA UNLIMITED ON users;
+GRANT CONNECT, RESOURCE TO BD_EU;
+GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW, CREATE TRIGGER, CREATE SEQUENCE, CREATE DATABASE LINK TO BD_EU;
+
+-- Drepturi pentru migrarea datelor
 GRANT SELECT ANY TABLE TO BD_AM;
 GRANT SELECT ANY TABLE TO BD_EU;
 
 
 
--- ! RULEAZA CA BD_AM:
-CONNECT BD_AM/parola_am@localhost/homedb1pdb;
+-- ! Deschide conexiunea BD_AM
 -- Legatura de la America spre Europa
-CREATE DATABASE LINK link_bd_eu 
-CONNECT TO BD_EU IDENTIFIED BY parola_eu 
-USING 'localhost/homedb1pdb';
+CREATE DATABASE LINK link_bd_eu CONNECT TO BD_EU IDENTIFIED BY parola_eu USING 'localhost/xepdb1'; 
 
+-- ! Deschide conexiunea BD_EU
+-- Legatura de la Europa spre America 
+CREATE DATABASE LINK link_bd_am CONNECT TO BD_AM IDENTIFIED BY parola_am USING 'localhost/xepdb1';
 
--- ! RULEAZA CA BD_EU:
-CONNECT BD_EU/parola_eu@localhost/homedb1pdb;
--- Legatura de la Europa spre America (pentru a verifica pasagerii la imbarcare)
-CREATE DATABASE LINK link_bd_am 
-CONNECT TO BD_AM IDENTIFIED BY parola_am 
-USING 'localhost/homedb1pdb';
-
--- ! RULEAZA CA BD_GLOBAL:
-CONNECT BD_GLOBAL/parola_global@localhost/homedb1pdb;
--- Schema globala are nevoie de legaturi catre ambele noduri fizice
-CREATE DATABASE LINK link_bd_am CONNECT TO BD_AM IDENTIFIED BY parola_am USING 'localhost/homedb1pdb';
-CREATE DATABASE LINK link_bd_eu CONNECT TO BD_EU IDENTIFIED BY parola_eu USING 'localhost/homedb1pdb';
+-- ! Deschide conexiunea BD_GLOBAL
+-- Schema globala are nevoie de legaturi catre ambele noduri locale
+CREATE DATABASE LINK link_bd_am CONNECT TO BD_AM IDENTIFIED BY parola_am USING 'localhost/xepdb1';
+CREATE DATABASE LINK link_bd_eu CONNECT TO BD_EU IDENTIFIED BY parola_eu USING 'localhost/xepdb1';
