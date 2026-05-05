@@ -56,6 +56,65 @@ COMMIT;
 -- verificare delete: BD_EU
 SELECT * FROM TARA WHERE id_tara = 999;
 
+----------
+-- ORAS
+----------
+-- trigger: BD_AM 
+CREATE OR REPLACE TRIGGER trg_sync_oras_am_eu
+AFTER INSERT OR UPDATE OR DELETE ON ORAS
+FOR EACH ROW
+BEGIN
+    IF INSERTING THEN
+        INSERT INTO ORAS@link_bd_eu (id_oras, id_tara, nume_oras)
+        VALUES (:NEW.id_oras, :NEW.id_tara, :NEW.nume_oras);
+
+    ELSIF UPDATING THEN
+        UPDATE ORAS@link_bd_eu
+        SET id_tara = :NEW.id_tara,
+            nume_oras = :NEW.nume_oras
+        WHERE id_oras = :OLD.id_oras;
+
+    ELSIF DELETING THEN
+        DELETE FROM ORAS@link_bd_eu
+        WHERE id_oras = :OLD.id_oras;
+    END IF;
+END;
+/
+
+-- testare insert: BD_AM
+INSERT INTO ORAS (id_oras, id_tara, nume_oras)
+SELECT 9999, id_tara, 'TEST_SYNC_ORAS'
+FROM TARA
+WHERE ROWNUM = 1;
+
+COMMIT;
+
+-- verificare insert: BD_EU
+SELECT *
+FROM ORAS
+WHERE id_oras = 9999;
+
+-- test update: BD_AM
+UPDATE ORAS
+SET nume_oras = 'TEST_SYNC_ORAS_UPDATED'
+WHERE id_oras = 9999;
+
+COMMIT;
+
+-- verificare update: BD_EU
+SELECT *
+FROM ORAS
+WHERE id_oras = 9999;
+
+-- test delete: BD_AM
+DELETE FROM ORAS WHERE id_oras = 9999;
+
+COMMIT;
+
+-- verificare delete: BD_EU
+SELECT *
+FROM ORAS WHERE id_oras = 9999;
+
 ------------------
 -- AVION
 ------------------
@@ -85,39 +144,43 @@ BEGIN
 END;
 /
 
--- test insert: BD_AM
-INSERT INTO AVION (id_avion, numar_inmatriculare, model, capacitate, an_fabricatie)
-VALUES (999, 'TEST999', 'TEST_MODEL', 100, 2020);
+-- testare insert: BD_AM
+INSERT INTO AVION
+    (id_avion, numar_inmatriculare, model, capacitate, an_fabricatie)
+VALUES
+    (9999, 'TEST-999', 'TEST_MODEL', 180, 2020);
 
 COMMIT;
 
 -- verificare insert: BD_EU
-SELECT * 
+SELECT *
 FROM AVION
-WHERE id_avion = 999;
+WHERE id_avion = 9999;
+
 
 -- test update: BD_AM
 UPDATE AVION
-SET model = 'TEST_MODEL_UPDATED'
-WHERE id_avion = 999;
+SET model = 'TEST_MODEL_UPDATED',
+    capacitate = 200
+WHERE id_avion = 9999;
 
 COMMIT;
 
 -- verificare update: BD_EU
-SELECT * 
+SELECT *
 FROM AVION
-WHERE id_avion = 999;
+WHERE id_avion = 9999;
 
 -- test delete: BD_AM
 DELETE FROM AVION
-WHERE id_avion = 999;
+WHERE id_avion = 9999;
 
 COMMIT;
 
 -- verificare delete: BD_EU
 SELECT * 
 FROM AVION
-WHERE id_avion = 999;
+WHERE id_avion = 9999;
 
 ---------------------------
 -- UTILIZATOR_DATA
@@ -149,39 +212,46 @@ BEGIN
 END;
 /
 
+-- pregatire test: BD_AM
+INSERT INTO UTILIZATOR_SEC (id_user, email, parola, rol)
+VALUES (9999, 'test.sync9999@example.com', 'test123', 'CLIENT');
+
 -- testare insert: BD_AM
-INSERT INTO UTILIZATOR_DATA (id_user, nume, prenume, telefon, data_inregistrare)
-VALUES (999, 'TEST_NUME', 'TEST_PRENUME', '0700000000', SYSDATE);
+INSERT INTO UTILIZATOR_DATA
+    (id_user, nume, prenume, telefon, data_inregistrare)
+VALUES
+    (9999, 'TEST_SYNC', 'USER', '0700000000', SYSDATE);
 
 COMMIT;
 
 -- verificare insert: BD_EU
 SELECT *
 FROM UTILIZATOR_DATA
-WHERE id_user = 999;
+WHERE id_user = 9999;
 
 -- testare update: BD_AM
 UPDATE UTILIZATOR_DATA
-SET telefon = '0711111111'
-WHERE id_user = 999;
+SET telefon = '0711111111',
+    nume = 'TEST_SYNC_UPDATED'
+WHERE id_user = 9999;
 
 COMMIT;
 
 -- verificare update: BD_EU
 SELECT *
 FROM UTILIZATOR_DATA
-WHERE id_user = 999;
+WHERE id_user = 9999;
 
 -- testare delete: BD_AM
 DELETE FROM UTILIZATOR_DATA
-WHERE id_user = 999;
+WHERE id_user = 9999;
 
 COMMIT;
 
 -- verificare delete BD_EU
 SELECT *
 FROM UTILIZATOR_DATA
-WHERE id_user = 999;
+WHERE id_user = 9999;
 
 -- METODA 2: SINCRONIZARE PRIN VIZUALIZARI MATERIALIZATE
 --------------
@@ -201,6 +271,8 @@ ON PREBUILT TABLE
 REFRESH FAST ON DEMAND
 WITH PRIMARY KEY
 AS SELECT * FROM ZBOR@link_bd_am;
+
+
 
 -- TESTARE METODA 2 (Refresh la MView)
 
