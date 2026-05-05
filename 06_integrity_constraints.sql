@@ -17,7 +17,17 @@ WHERE table_name IN (
 )
 ORDER BY table_name, constraint_type;
 
--- Constrangeri Check: BD_AM (6.3)
+-- Verificare triggere globale pe BD_EU (6.3)
+SELECT trigger_name, table_name, triggering_event, status
+FROM user_triggers
+WHERE trigger_name IN (
+    'TRG_FK_REZERVARE_USER_EU',
+    'TRG_FK_BILET_PASAGER_EU',
+    'TRG_UNIQUE_LOC_BILET_EU'
+)
+ORDER BY trigger_name;
+
+-- Constrangeri Check: BD_AM (6.4)
 ALTER TABLE AVION
   ADD CONSTRAINT chk_avion_capacitate_am CHECK (capacitate > 0 AND capacitate <= 850);
  
@@ -107,7 +117,7 @@ VALUES (9901, 9903, -50, SYSTIMESTAMP, 'CARD', 'ACCEPTATA');
 ROLLBACK;
 
 
--- Constrangeri Check: BD_EU (6.4)
+-- Constrangeri Check: BD_EU (6.5)
 ALTER TABLE TARA
   ADD CONSTRAINT chk_cod_iso_2_eu
     CHECK (cod_iso_2 = UPPER(cod_iso_2) AND LENGTH(cod_iso_2) = 2);
@@ -193,7 +203,7 @@ VALUES (9901, 'TestTara', 'RO');
 ROLLBACK;
 
 
--- TRIGGER GLOBAL FK: REZERVARE_EU.id_user -> UTILIZATOR_SEC@BD_AM (6.5)
+-- TRIGGER GLOBAL pentru REZERVARE_EU.id_user (6.6)
 -- BD_EU
 CREATE OR REPLACE TRIGGER trg_fk_rezervare_user_eu
 BEFORE INSERT OR UPDATE OF id_user ON REZERVARE_EU
@@ -221,7 +231,7 @@ INSERT INTO REZERVARE_EU (id_rezervare, id_user, data_rezervare, regiune_vanzare
 VALUES (9940, 99999, SYSDATE, 'EU', 300, 'CONFIRMATA'); 
 ROLLBACK;
 
--- TRIGGER GLOBAL FK pentru PASAGERI (6.6)
+-- TRIGGER GLOBAL FK pentru PASAGERI (6.7)
 CREATE OR REPLACE TRIGGER trg_fk_bilet_pasager_eu
 BEFORE INSERT OR UPDATE OF id_pasager ON BILET_EU
 FOR EACH ROW
@@ -260,7 +270,7 @@ WHERE  id_rezervare = 9960 AND litera_scaun = 'B';
 
 ROLLBACK;
 
--- TRIGGERE GLOBAL UNIQUE: LOC IN AVION (BILET_AM + BILET_EU) (6.7)
+-- TRIGGERE GLOBAL UNIQUE: LOC IN AVION (BILET_AM + BILET_EU) (6.8)
 -- TRIGGER pe BD_AM
 CREATE OR REPLACE TRIGGER trg_unique_loc_bilet_am
 BEFORE INSERT OR UPDATE OF id_zbor, numar_rand, litera_scaun ON BILET_AM
