@@ -119,7 +119,8 @@ CREATE TABLE BILET_AM (
 CREATE TABLE TARA (
     id_tara NUMBER PRIMARY KEY,
     nume_tara VARCHAR2(100) NOT NULL UNIQUE,
-    cod_iso_2 CHAR(2) NOT NULL UNIQUE
+    cod_iso_2 CHAR(2) NOT NULL UNIQUE,
+    CONSTRAINT chk_cod_iso_2_eu CHECK (cod_iso_2 = UPPER(cod_iso_2) AND LENGTH(cod_iso_2) = 2)
 );
 
 CREATE TABLE ORAS (
