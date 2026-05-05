@@ -233,7 +233,7 @@ for i in range(NUM_RESERVATIONS):
         pas_idx = random.randint(1, NUM_PASSENGERS)
         is_business = random.random() > 0.90
         
-        ticket_price = flight['price'] * 1.8 if is_business else flight['price']
+        ticket_price = flight['price'] * 1.5 if is_business else flight['price']
         total_price += ticket_price
         clasa = 'BUSINESS' if is_business else 'ECONOMY'
         
