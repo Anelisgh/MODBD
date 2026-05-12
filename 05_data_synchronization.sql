@@ -272,6 +272,8 @@ REFRESH FAST ON DEMAND
 WITH PRIMARY KEY
 AS SELECT * FROM ZBOR@link_bd_am;
 
+
+
 -- TESTARE METODA 2 (Refresh la MView)
 
 -- 1. pe BD_AM: modificam statusul zborului

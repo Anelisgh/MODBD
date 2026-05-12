@@ -656,7 +656,11 @@ SELECT status FROM PLATA_EU WHERE id_rezervare = {id_to_cancel};""", language="s
                 st.code(
                     f"-- Lanț triggere: Global → trg_upd_utilizator_global → AM → trg_sync_utilizator_data_am_eu → EU\n\n"
                     f"-- 1. Pe BD_GLOBAL (sursa UPDATE-ului pe view):\n"
+<<<<<<< HEAD
                     f"UPDATE V_UTILIZATOR SET nume = '{new_nume}' WHERE id_user = {u_id};\n\n"
+=======
+                    f"UPDATE V_UTILIZATOR SET nume = 'NoumeNou' WHERE id_user = {u_id};\n\n"
+>>>>>>> 0f2e01c1ca8ac16d74686f5ccf16daa2636cd733
                     f"-- 2. Pe BD_AM (unde INSTEAD OF a scris efectiv):\n"
                     f"SELECT nume FROM UTILIZATOR_DATA WHERE id_user = {u_id};\n\n"
                     f"-- 3. Pe BD_EU (propagat automat prin trg_sync_utilizator_data_am_eu):\n"
@@ -740,4 +744,8 @@ SELECT status FROM PLATA_EU WHERE id_rezervare = {id_to_cancel};""", language="s
 
         conn.close()
     except Exception as e:
+<<<<<<< HEAD
         st.error(f"Eroare: {e}")
+=======
+        st.error(f"Eroare: {e}")
+>>>>>>> 0f2e01c1ca8ac16d74686f5ccf16daa2636cd733

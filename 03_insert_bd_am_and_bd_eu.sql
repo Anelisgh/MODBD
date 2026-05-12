@@ -136,4 +136,8 @@ BEGIN
     SELECT NVL(MAX(id_bilet), 0) INTO v_max FROM BILET_EU;
     EXECUTE IMMEDIATE 'ALTER TABLE BILET_EU MODIFY (id_bilet GENERATED ALWAYS AS IDENTITY (START WITH ' || (v_max + 2) || ' INCREMENT BY 2))';
 END;
+<<<<<<< HEAD
 /
+=======
+/
+>>>>>>> 0f2e01c1ca8ac16d74686f5ccf16daa2636cd733

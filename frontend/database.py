@@ -57,4 +57,8 @@ def run_statement(connection, statement, params=None):
             cursor.execute(statement)
         connection.commit()
     finally:
+<<<<<<< HEAD
         cursor.close()
+=======
+        cursor.close()
+>>>>>>> 0f2e01c1ca8ac16d74686f5ccf16daa2636cd733

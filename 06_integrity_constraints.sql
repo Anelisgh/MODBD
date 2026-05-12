@@ -347,4 +347,9 @@ ROLLBACK;
 -- Conectat ca BD_AM: curatare
 DELETE FROM BILET_AM    WHERE id_rezervare = 9970;
 DELETE FROM REZERVARE_AM WHERE id_rezervare = 9970;
+<<<<<<< HEAD
 COMMIT;
+=======
+COMMIT;
+ 
+>>>>>>> 0f2e01c1ca8ac16d74686f5ccf16daa2636cd733

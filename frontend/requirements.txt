@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 streamlit==1.53.1
 pandas==2.2.2
 oracledb==3.4.1
+=======
+streamlit==1.53.1
+pandas==2.2.2
+oracledb==3.4.1
+>>>>>>> 0f2e01c1ca8ac16d74686f5ccf16daa2636cd733
 python-dotenv==1.0.1
