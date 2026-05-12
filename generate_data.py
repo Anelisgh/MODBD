@@ -1,10 +1,10 @@
 import random
 from datetime import datetime, timedelta
 
-NUM_USERS = 50
-NUM_PASSENGERS = 80
-NUM_FLIGHTS = 100
-NUM_RESERVATIONS = 350
+NUM_USERS = 13
+NUM_PASSENGERS = 20
+NUM_FLIGHTS = 25
+NUM_RESERVATIONS = 88
 START_DATE = datetime(2023, 1, 1)
 END_DATE = datetime(2027, 6, 1) 
 SIMULATED_NOW = datetime(2026, 1, 11, 12, 0, 0)
@@ -110,7 +110,7 @@ for plane in planes:
 
 statements.append("")
 statements.append("-- UTILIZATORI")
-roles = ['CLIENT'] * (NUM_USERS - 5) + ['ADMIN'] * 5
+roles = ['CLIENT'] * (NUM_USERS - 2) + ['ADMIN'] * 2
 random.shuffle(roles)
 for i in range(NUM_USERS):
     fname = random.choice(first_names)
@@ -233,7 +233,7 @@ for i in range(NUM_RESERVATIONS):
         pas_idx = random.randint(1, NUM_PASSENGERS)
         is_business = random.random() > 0.90
         
-        ticket_price = flight['price'] * 1.8 if is_business else flight['price']
+        ticket_price = flight['price'] * 1.5 if is_business else flight['price']
         total_price += ticket_price
         clasa = 'BUSINESS' if is_business else 'ECONOMY'
         

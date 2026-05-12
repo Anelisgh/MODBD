@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import database
 import time
-
-# Configurare specificatii avioane pentru validare UI
+# rulare: streamlit run app.py
+# configurare avioane pt validare ui
 PLANE_SPECS = {
     'Boeing 737-800':   {'cols': ['A','B','C','D','E','F'], 'rows': 32},
     'Airbus A320':      {'cols': ['A','B','C','D','E','F'], 'rows': 30},
@@ -26,10 +26,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Meniul principal de navigare
+# meniu navigare
 menu_options = ["Gestiune Baze Locale", "Vizualizare Bază Globală", "Administrare Globală"]
 
-# Recuperare pagina din URL (pentru a păstra starea la refresh)
+# luam pagina din url (pentru a pastra starea de refresh)
 current_query_params = st.query_params
 default_index = 0
 if "page" in current_query_params:
@@ -40,36 +40,47 @@ if "page" in current_query_params:
 
 page = st.sidebar.selectbox("Navigare Proiect", menu_options, index=default_index)
 
-# Actualizăm URL-ul cu pagina curentă
+# actualizam url-ul cu pagina curenta
 st.query_params["page"] = page
 
-# Buton de refresh global pentru a reîncărca datele din baza de date
+# buton refresh date
 if st.sidebar.button("🔄 Reîncarcă Datele"):
     st.rerun()
 
 if page == "Gestiune Baze Locale":
     st.title("✈️ BlueHorizon - Gestiune Baze Locale")
     
-    # Sidebar: Selectarea nodului
+    # selectare nodul in sidebar
     st.sidebar.header("Configurare Conexiune")
     selected_node_label = st.sidebar.selectbox("Selectează Nodul Activ", ["America (BD_AM)", "Europa (BD_EU)"])
     NODE = "AM" if "AM" in selected_node_label else "EU"
     st.sidebar.success(f"Conectat la: **BD_{NODE}**")
     
-    # Definire sufix tabele în funcție de nod
+    # def sufix tabele si pasager local/remote
     TBL_SUFIX = f"_{NODE}"
-    # Accesul la PASAGER diferă: pe AM e local, pe EU e via DB Link
+    # Accesul la PASAGER difera: pe AM e local, pe EU e via DB Link
     PASAGER_TBL = "PASAGER" if NODE == "AM" else "PASAGER@link_bd_am"
     
     st.header(f"🛠️ Operațiuni LMD pe Serverul {NODE}")
     
-    tab1, tab2, tab3 = st.tabs(["1. Emitere Bilet (Insert)", "2. Profil Utilizator (Update & Triggere)", "3. Istoric Rezervări (Vizualizare)"])
-    # ==========================================
-    # TAB 1: EMITERE BILET (INSERT TRANZACȚII)
-    # ==========================================
+    if NODE == "AM":
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "1. Emitere Bilet (Insert)",
+            "2. Gestiune Plăți (Update Orizontal)",
+            "3. Istoric Rezervări (Vizualizare)",
+            "4. Demonstrație LMD Local"
+        ])
+    else:
+        tab1, tab2, tab3 = st.tabs([
+            "1. Emitere Bilet (Insert)",
+            "2. Gestiune Plăți (Update Orizontal)",
+            "3. Istoric Rezervări (Vizualizare)"
+        ])
+
+    # TAB 1: EMITERE BILET (INSERT TRANZACTII)
     with tab1:
         st.subheader("Creează o nouă rezervare")
-        st.info(f"Tranzacția va fi salvată local în tabelele REZERVARE{TBL_SUFIX}, PLATA{TBL_SUFIX} și BILET{TBL_SUFIX}.")
+        st.info(f"Tranzacția se salvează local în tabelele REZERVARE{TBL_SUFIX}, PLATA{TBL_SUFIX} și BILET{TBL_SUFIX}.")
         
         try:
             conn = database.get_connection(NODE)
@@ -201,11 +212,11 @@ if page == "Gestiune Baze Locale":
                                     <span class="value">{selected_pasager.split(' (')[0]}</span>
                                 </div>
                                 <div class="ticket-field">
-                                    <span class="label">Ruta</span>
+                                    <span class="label">Rută</span>
                                     <span class="value">{sel_dep_label} -> {sel_arr_label}</span>
                                 </div>
                                 <div class="ticket-field">
-                                    <span class="label">Clasa & Loc</span>
+                                    <span class="label">Clasă & Loc</span>
                                     <span class="value">{clasa} | {rand}{scaun}</span>
                                 </div>
                             </div>
@@ -222,77 +233,53 @@ if page == "Gestiune Baze Locale":
         except Exception as e:
             st.error(f"Eroare conexiune: {e}")
             
-    # ==========================================
-    # TAB 2: UPDATE PROFIL (DEMO TRIGGERE)
-    # ==========================================
+    # TAB 2: GESTIUNE PLATI LOCALE
     with tab2:
-        st.subheader("Actualizare Date Contact (Testare Replicare)")
-        
-        if NODE == "AM":
-            st.info("💡 Nodul **AM** este Master pentru datele de profil. Trigger-ul `trg_sync_utilizator_data_am_eu` va propaga automat schimbarea pe nodul EU.")
-        else:
-            st.warning("⚠️ Atenție: Pe nodul **EU**, modificările sunt **locale**. Sincronizarea automată este configurată doar dinspre AM spre EU în acest proiect.")
+        st.subheader("Gestiune Plăți Locale (Actualizare Status)")
+        st.write(f"Procesare tranzacții financiare pentru nodul {NODE}.")
         
         try:
             conn = database.get_connection(NODE)
-            cols_u, rows_u = database.run_query(conn, "SELECT id_user, nume, prenume, telefon FROM UTILIZATOR_DATA WHERE ROWNUM <= 20")
             
-            if rows_u:
-                user_options = {f"{r[1]} {r[2]} (Tel actual: {r[3]})": r[0] for r in rows_u}
-                sel_user_label = st.selectbox("Alege Utilizatorul pentru actualizare", list(user_options.keys()))
-                sel_user_id = user_options[sel_user_label]
+            # 1. Extragem cele mai recente plati locale (limitam la 20)
+            sql_plati = f"SELECT id_plata, id_rezervare, suma_achitata, status FROM PLATA_{NODE} ORDER BY id_plata DESC FETCH FIRST 20 ROWS ONLY"
+            cols_p, rows_p = database.run_query(conn, sql_plati)
+            
+            if rows_p:
+                # Cream un dictionar pentru dropdown-ul din UI
+                # Format: "Plata #12 (Rez: #10) - Suma: 350 - Status: IN_PROCESARE" -> id_plata
+                plati_opt = {f"Plata #{r[0]} (Rez: #{r[1]}) - Suma: {r[2]} - Status curent: {r[3]}": r[0] for r in rows_p}
                 
-                new_phone = st.text_input("Nou număr de telefon", max_chars=15)
+                sel_plata_label = st.selectbox("Selectează plata pe care dorești să o procesezi:", list(plati_opt.keys()))
+                id_plata_sel = plati_opt[sel_plata_label]
                 
-                if st.button("Actualizează Telefon"):
-                    if new_phone:
-                        sql_upd = "UPDATE UTILIZATOR_DATA SET telefon = :1 WHERE id_user = :2"
-                        database.run_statement(conn, sql_upd, [new_phone, sel_user_id])
-                        st.success(f"Număr de telefon actualizat la {new_phone} pe BD_{NODE}!")
-                        
-                        st.info("📌 **Pentru demonstrație în SQL Developer:**")
-                        if NODE == "AM":
-                            # Trigger AM→EU există, propagarea e automată
-                            st.code(
-                                f"-- Trigger trg_sync_utilizator_data_am_eu propagă automat AM → EU\n\n"
-                                f"-- 1. Pe BD_AM (Master, unde s-a făcut update-ul):\n"
-                                f"SELECT telefon FROM UTILIZATOR_DATA WHERE id_user = {sel_user_id};\n\n"
-                                f"-- 2. Pe BD_EU (Replicat automat prin trigger):\n"
-                                f"SELECT telefon FROM UTILIZATOR_DATA WHERE id_user = {sel_user_id};",
-                                language="sql"
-                            )
-                        else:
-                            # Pe EU nu există trigger de propagare înapoi spre AM
-                            st.warning(
-                                "⚠️ **Limitare arhitecturală**: Modificarea de mai sus este **locală pe BD_EU** "
-                                "și **NU se propagă automat pe BD_AM**. "
-                                "Trigger-ul de sincronizare (`trg_sync_utilizator_data_am_eu`) funcționează "
-                                "**EXCLUSIV dinspre AM spre EU** (AM este nodul Master). "
-                                "Aceasta este o limitare intenționată a arhitecturii de replicare asymetrică."
-                            )
-                            st.code(
-                                f"-- Modificarea s-a aplicat LOCAL pe BD_EU:\n"
-                                f"SELECT telefon FROM UTILIZATOR_DATA WHERE id_user = {sel_user_id};\n\n"
-                                f"-- ATENȚIE: Pe BD_AM (Master) telefonul RĂMÂNE NEMODIFICAT:\n"
-                                f"-- Conectează-te pe BD_AM și verifică:\n"
-                                f"SELECT telefon FROM UTILIZATOR_DATA WHERE id_user = {sel_user_id};\n"
-                                f"-- Rezultatul de pe AM va diferi de cel de pe EU!",
-                                language="sql"
-                            )
-                    else:
-                        st.warning("Introdu un număr valid.")
+                # 2. Selectam noul status (valorile trebuie sa respecte constrangerea CHECK din baza de date)
+                nou_status = st.selectbox("Noul Status:", ['IN_PROCESARE', 'ACCEPTATA', 'RESPINSA', 'RAMBURSATA'])
+                
+                if st.button("Actualizează Status Plată"):
+                    # 3. Executam UPDATE-ul exclusiv pe tabelul fizic local
+                    update_sql = f"UPDATE PLATA_{NODE} SET status = :1 WHERE id_plata = :2"
+                    database.run_statement(conn, update_sql, [nou_status, id_plata_sel])
+                    
+                    st.success(f"Statusul plății #{id_plata_sel} a fost actualizat la '{nou_status}' pe serverul local BD_{NODE}.")
+                    
+                    st.info("📌 **Pentru demonstrație în SQL Developer:**")
+                    st.code(
+                        f"SELECT * FROM PLATA_{NODE} WHERE id_plata = {id_plata_sel};", 
+                        language="sql"
+                    )
+            else:
+                st.info(f"Nu există plăți înregistrate pe nodul {NODE} în acest moment.")
+                
             conn.close()
         except Exception as e:
             st.error(f"Eroare: {e}")
 
-    # ==========================================
-    # TAB 3: ISTORIC REZERVĂRI LOCALE
-    # ==========================================
+    # TAB 3: ISTORIC REZERVARI LOCALE
     with tab3:
         st.subheader(f"Ultimele rezervări procesate pe BD_{NODE}")
         try:
             conn = database.get_connection(NODE)
-            # Selectăm doar din tabela locală pentru a demonstra fragmentarea orizontală
             sql_istoric = f"""
                 SELECT * FROM (
                     SELECT R.*, U.nume || ' ' || U.prenume AS Client
@@ -312,22 +299,193 @@ if page == "Gestiune Baze Locale":
         except Exception as e:
             st.error(f"Eroare: {e}")
 
+    # TAB 4: DOAR PE BD_AM — toate cele 3 tipuri de fragmentare (Cerinta 3)
+    if NODE == "AM":
+        with tab4:
+            st.subheader("Demonstrație LMD Local → Efect Global")
+            st.info(
+                "Toate operațiile de mai jos se execută **local pe BD_AM**. "
+                "Efectele lor sunt vizibile imediat la nivel global prin vederile și sinonimele schemei BD_GLOBAL."
+            )
+
+            sec_oriz, sec_vert, sec_repl = st.tabs([
+                "A. Fragment Orizontal (PLATA_AM)",
+                "B. Fragment Vertical (UTILIZATOR_DATA)",
+                "C. Relație Replicată (AVION)"
+            ])
+
+            # SECTIUNEA C: FRAGMENT ORIZONTAL
+            with sec_oriz:
+                st.write(
+                    "**Operație locală:** UPDATE status pe `PLATA_AM` (BD_AM) → "
+                    "modificarea apare imediat în vederea globală `V_PLATA` (UNION ALL cu PLATA_EU)."
+                )
+                try:
+                    conn = database.get_connection("AM")
+                    cols_p, rows_p = database.run_query(
+                        conn,
+                        "SELECT id_plata, id_rezervare, suma_achitata, status "
+                        "FROM PLATA_AM ORDER BY id_plata DESC FETCH FIRST 20 ROWS ONLY"
+                    )
+                    if rows_p:
+                        plati_opt = {
+                            f"Plata #{r[0]} (Rez: #{r[1]}) - Suma: {r[2]} - Status: {r[3]}": r[0]
+                            for r in rows_p
+                        }
+                        sel_plata = st.selectbox(
+                            "Selectează plata (PLATA_AM local)",
+                            list(plati_opt.keys()),
+                            key="demo_sel_plata"
+                        )
+                        id_plata_demo = plati_opt[sel_plata]
+                        nou_status_oriz = st.selectbox(
+                            "Noul Status:",
+                            ['IN_PROCESARE', 'ACCEPTATA', 'RESPINSA', 'RAMBURSATA'],
+                            key="demo_status_oriz"
+                        )
+                        if st.button("Actualizează Status Local (Fragment Orizontal)"):
+                            database.run_statement(
+                                conn,
+                                "UPDATE PLATA_AM SET status = :1 WHERE id_plata = :2",
+                                [nou_status_oriz, id_plata_demo]
+                            )
+                            st.success(
+                                f"Statusul plății #{id_plata_demo} actualizat la '{nou_status_oriz}' pe BD_AM."
+                            )
+                            st.info("📌 **Pentru demonstrație în SQL Developer:**")
+                            st.code(
+                                f"-- 1. Pe BD_AM (fragmentul orizontal local modificat):\n"
+                                f"SELECT id_plata, status FROM PLATA_AM WHERE id_plata = {id_plata_demo};\n\n"
+                                f"-- 2. La nivel GLOBAL (vizibil in V_PLATA prin UNION ALL cu PLATA_EU):\n"
+                                f"SELECT id_plata, status FROM V_PLATA WHERE id_plata = {id_plata_demo};",
+                                language="sql"
+                            )
+                    else:
+                        st.info("Nu există plăți pe BD_AM.")
+                    conn.close()
+                except Exception as e:
+                    st.error(f"Eroare: {e}")
+
+            # SECTIUNEA A: FRAGMENT VERTICAL
+            with sec_vert:
+                st.write(
+                    "**Operație locală:** UPDATE telefon pe `UTILIZATOR_DATA` (BD_AM) → "
+                    "propagat automat pe BD_EU prin trigger-ul `trg_sync_utilizator_data_am_eu` → "
+                    "modificarea apare imediat în `V_UTILIZATOR` la nivel global (JOIN vertical)."
+                )
+                try:
+                    conn = database.get_connection("AM")
+                    cols_u, rows_u = database.run_query(
+                        conn,
+                        "SELECT id_user, nume || ' ' || prenume || ' (Tel: ' || NVL(telefon, 'N/A') || ')' "
+                        "FROM UTILIZATOR_DATA WHERE ROWNUM <= 20"
+                    )
+                    if rows_u:
+                        user_vert_opt = {r[1]: r[0] for r in rows_u}
+                        sel_vert_u = st.selectbox(
+                            "Selectează Utilizatorul (UTILIZATOR_DATA local)",
+                            list(user_vert_opt.keys()),
+                            key="sel_vert_u"
+                        )
+                        u_vert_id = user_vert_opt[sel_vert_u]
+                        new_tel = st.text_input(
+                            "Număr Telefon Nou", placeholder="ex: 0721000001", key="new_tel"
+                        )
+                        if st.button("Actualizează Telefon Local (Fragment Vertical)"):
+                            if new_tel:
+                                database.run_statement(
+                                    conn,
+                                    "UPDATE UTILIZATOR_DATA SET telefon = :1 WHERE id_user = :2",
+                                    [new_tel, u_vert_id]
+                                )
+                                st.success(
+                                    f"Telefonul utilizatorului ID={u_vert_id} actualizat local pe BD_AM."
+                                )
+                                st.success(
+                                    "✅ Trigger-ul `trg_sync_utilizator_data_am_eu` s-a declanșat "
+                                    "automat și a propagat modificarea pe BD_EU."
+                                )
+                                st.info("📌 **Pentru demonstrație în SQL Developer:**")
+                                st.code(
+                                    f"-- 1. Pe BD_AM (sursa fragmentului vertical):\n"
+                                    f"SELECT id_user, telefon FROM UTILIZATOR_DATA WHERE id_user = {u_vert_id};\n\n"
+                                    f"-- 2. Pe BD_EU (propagat automat prin trg_sync_utilizator_data_am_eu):\n"
+                                    f"SELECT id_user, telefon FROM UTILIZATOR_DATA WHERE id_user = {u_vert_id};\n\n"
+                                    f"-- 3. La nivel GLOBAL (vizibil in V_UTILIZATOR prin JOIN vertical AM+EU):\n"
+                                    f"SELECT id_user, nume, prenume, telefon FROM V_UTILIZATOR WHERE id_user = {u_vert_id};",
+                                    language="sql"
+                                )
+                            else:
+                                st.warning("Introdu un număr de telefon valid.")
+                    else:
+                        st.info("Nu s-au găsit utilizatori pe BD_AM.")
+                    conn.close()
+                except Exception as e:
+                    st.error(f"Eroare: {e}")
+
+            # SECTIUNEA B: RELATIE REPLICATA
+            with sec_repl:
+                st.write(
+                    "**Operație locală:** UPDATE capacitate pe `AVION` (BD_AM) → "
+                    "propagat automat pe BD_EU prin trigger-ul `trg_sync_avion_am_eu` → "
+                    "modificarea apare imediat prin sinonimul global `AVION` (pointează pe BD_AM)."
+                )
+                try:
+                    conn = database.get_connection("AM")
+                    cols_av, rows_av = database.run_query(
+                        conn,
+                        "SELECT id_avion, numar_inmatriculare || ' | ' || model || "
+                        "' (cap: ' || capacitate || ' locuri)' FROM AVION WHERE ROWNUM <= 20"
+                    )
+                    if rows_av:
+                        avion_opt = {r[1]: r[0] for r in rows_av}
+                        sel_avion = st.selectbox(
+                            "Selectează Avionul (AVION local)",
+                            list(avion_opt.keys()),
+                            key="sel_avion"
+                        )
+                        av_id = avion_opt[sel_avion]
+                        new_cap = st.number_input(
+                            "Capacitate Nouă (locuri)", min_value=1, max_value=850, value=150, key="new_cap"
+                        )
+                        if st.button("Actualizează Capacitate Local (Relație Replicată)"):
+                            database.run_statement(
+                                conn,
+                                "UPDATE AVION SET capacitate = :1 WHERE id_avion = :2",
+                                [new_cap, av_id]
+                            )
+                            st.success(
+                                f"Capacitatea avionului ID={av_id} actualizată la {new_cap} locuri pe BD_AM."
+                            )
+                            st.success(
+                                "✅ Trigger-ul `trg_sync_avion_am_eu` s-a declanșat automat "
+                                "și a propagat modificarea pe BD_EU."
+                            )
+                            st.info("📌 **Pentru demonstrație în SQL Developer:**")
+                            st.code(
+                                f"-- 1. Pe BD_AM (tabela sursa a relatiei replicate):\n"
+                                f"SELECT model, capacitate FROM AVION WHERE id_avion = {av_id};\n\n"
+                                f"-- 2. Pe BD_EU (propagat automat prin trg_sync_avion_am_eu):\n"
+                                f"SELECT model, capacitate FROM AVION WHERE id_avion = {av_id};\n\n"
+                                f"-- 3. La nivel GLOBAL (prin sinonimul AVION -> BD_AM):\n"
+                                f"SELECT model, capacitate FROM AVION WHERE id_avion = {av_id};",
+                                language="sql"
+                            )
+                    else:
+                        st.info("Nu s-au găsit avioane pe BD_AM.")
+                    conn.close()
+                except Exception as e:
+                    st.error(f"Eroare: {e}")
+
 elif page == "Vizualizare Bază Globală":
     st.title("🌍 BlueHorizon - Vizualizare Bază Globală")
-    st.sidebar.header("Configurare Conexiune")
-    st.sidebar.success("Conectat la: **BD_GLOBAL**")
+    st.sidebar.success("Conectat la: BD_GLOBAL")
     
-    st.info("Ești conectat la schema **BD_GLOBAL**. Datele afișate aici sunt reconstruite automat din fragmentele aflate pe BD_AM și BD_EU, fără ca aplicația să știe unde sunt stocate fizic.")
+    st.info("Ești conectat la schema **BD_GLOBAL**. Datele afișate aici sunt reconstruite automat din fragmentele aflate pe BD_AM și BD_EU prin vederi.")
     
     try:
         conn = database.get_connection("GLOBAL")
-        
-        # Tab-uri conform cerințelor de vizualizare a efectelor operațiilor LMD
-        tab_oriz, tab_vert, tab_repl = st.tabs([
-            "1. BILET – Fragmente Orizontale (UNION)", 
-            "2. UTILIZATOR – Fragmente Verticale (JOIN)",
-            "3. ZBOR – Relații Replicate (SINONIM)"
-        ])
+        tab_oriz, tab_vert, tab_repl = st.tabs(["1. BILET – Fragmente Orizontale (UNION)", "2. UTILIZATOR – Fragmente Verticale (JOIN)", "3. ZBOR – Relații Replicate (SINONIM)"])
         
         with tab_oriz:
             st.subheader("Vizualizare Fragmente Orizontale Reconstruite")
@@ -355,7 +513,7 @@ elif page == "Vizualizare Bază Globală":
                 
         with tab_vert:
             st.subheader("Vizualizare Fragmente Verticale Reconstruite")
-            st.write("Vizualizarea `V_UTILIZATOR` face `JOIN` între datele de securitate și datele de profil distribuite.")
+            st.write("Vizualizarea `V_UTILIZATOR` face `JOIN` între datele distribuite de profil și securitate.")
             
             sql_utilizatori = """
                 SELECT * FROM (
@@ -394,21 +552,11 @@ elif page == "Vizualizare Bază Globală":
 elif page == "Administrare Globală":
     st.title("⚖️ BlueHorizon - Administrare Globală")
     st.sidebar.success("Conectat la: **BD_GLOBAL** (Nivel LMD)")
-    
-    st.warning("""
-        Atenție: Operațiile realizate aici sunt rutate explicit către fragmentele locale corespunzătoare 
-        prin Database Links (link_bd_am / link_bd_eu), asigurând transparența la nivel de aplicație.
-    """)
-
     try:
         conn = database.get_connection("GLOBAL")
-        tab_upd_oriz, tab_upd_vert, tab_upd_repl = st.tabs([
-            "Update Global (Orizontal)", 
-            "Update Global (Vertical)",
-            "Update Global (Replicat)"
-        ])
+        tab_upd_oriz, tab_upd_vert, tab_upd_repl = st.tabs(["Update Global (Orizontal)", "Update Global (Vertical)", "Update Global (Replicat)"])
 
-        # --- UPDATE PE FRAGMENTE ORIZONTALE ---
+        # UPDATE PE FRAGMENTE ORIZONTALE
         with tab_upd_oriz:
             st.subheader("Anulare Rezervare la Nivel Global")
             st.write(
@@ -426,10 +574,10 @@ elif page == "Administrare Globală":
                 id_to_cancel = rez_options[sel_rez]
 
                 if st.button("Anulează Rezervarea Global"):
-                    # REZERVARE: trigger-ul INSTEAD OF (trg_upd_rezervare_global) rutează automat
-                    # pe fragmentul corect (AM dacă ID impar, EU dacă ID par).
+                    # REZERVARE: trigger-ul INSTEAD OF (trg_upd_rezervare_global) ruteaza automat
+                    # pe fragmentul corect (AM daca ID impar, EU daca ID par).
                     # PLATA: nu are trigger INSTEAD OF, deci facem update direct pe ambele fragmente;
-                    # rândul există doar pe unul, pe celălalt UPDATE-ul afectează 0 rânduri.
+                    # randul exista doar pe unul, pe celalalt UPDATE-ul afecteaza 0 randuri.
                     plsql_cancel = """
                     BEGIN
                         -- Folosim VIEW-ul: trigger-ul INSTEAD OF rutează spre AM sau EU automat
@@ -482,7 +630,7 @@ SELECT status FROM PLATA_EU WHERE id_rezervare = {id_to_cancel};""", language="s
                         else:
                             st.write("❌ Rândul nu aparține acestui fragment.")
 
-        # --- UPDATE PE FRAGMENTE VERTICALE ---
+        # UPDATE PE FRAGMENTE VERTICALE
         with tab_upd_vert:
             st.subheader("Modificare Nume Utilizator Global")
             st.write(
@@ -501,21 +649,14 @@ SELECT status FROM PLATA_EU WHERE id_rezervare = {id_to_cancel};""", language="s
             new_nume = st.text_input("Nume Nou")
 
             if st.button("Actualizează Nume Global"):
-                # Folosim direct VIEW-ul — trigger-ul INSTEAD OF (trg_upd_utilizator_global)
-                # elimină ORA-01732 și redirecționează update-ul spre UTILIZATOR_DATA@link_bd_am.
-                # Trigger-ul de sync de pe AM propagă apoi automat modificarea pe EU.
-                database.run_statement(
-                    conn,
-                    "UPDATE V_UTILIZATOR SET nume = :1 WHERE id_user = :2",
-                    [new_nume, u_id]
-                )
+                database.run_statement(conn, "UPDATE V_UTILIZATOR SET nume = :1 WHERE id_user = :2", [new_nume, u_id])
                 st.success("Numele a fost actualizat la nivel global prin lanțul de triggere!")
-                
+
                 st.info("📌 **Pentru demonstrație în SQL Developer:**")
                 st.code(
                     f"-- Lanț triggere: Global → trg_upd_utilizator_global → AM → trg_sync_utilizator_data_am_eu → EU\n\n"
                     f"-- 1. Pe BD_GLOBAL (sursa UPDATE-ului pe view):\n"
-                    f"UPDATE V_UTILIZATOR SET nume = 'NoumeNou' WHERE id_user = {u_id};\n\n"
+                    f"UPDATE V_UTILIZATOR SET nume = '{new_nume}' WHERE id_user = {u_id};\n\n"
                     f"-- 2. Pe BD_AM (unde INSTEAD OF a scris efectiv):\n"
                     f"SELECT nume FROM UTILIZATOR_DATA WHERE id_user = {u_id};\n\n"
                     f"-- 3. Pe BD_EU (propagat automat prin trg_sync_utilizator_data_am_eu):\n"
@@ -540,7 +681,7 @@ SELECT status FROM PLATA_EU WHERE id_rezervare = {id_to_cancel};""", language="s
                     conn_eu.close()
                     st.write(res_eu[1])
 
-        # --- UPDATE PE RELAȚII REPLICATE ---
+        # UPDATE PE RELATII REPLICATE
         with tab_upd_repl:
             st.subheader("Actualizare Preț Zbor Global")
             st.write("Modificăm prețul prin sinonimul global `ZBOR`. Modificarea se face pe `BD_AM`.")
@@ -559,7 +700,7 @@ SELECT status FROM PLATA_EU WHERE id_rezervare = {id_to_cancel};""", language="s
                 st.info("📌 **Pentru demonstrație în SQL Developer:**")
                 st.code(f"-- 1. Pe BD_AM (Tabela Sursă are noul preț):\nSELECT pret_standard FROM ZBOR WHERE id_zbor = {z_id};\n\n-- 2. Pe BD_EU (Materialized View are VECHIUL preț până la Refresh):\nSELECT pret_standard FROM ZBOR WHERE id_zbor = {z_id};", language="sql")
                 
-                st.session_state['last_z_id'] = z_id # Salvăm ID-ul pentru refresh-ul de mai jos
+                st.session_state['last_z_id'] = z_id # salvam ID-ul pentru refresh-ul de mai jos
                 
             if 'last_z_id' in st.session_state:
                 st.divider()

@@ -23,7 +23,6 @@ GRANT SELECT ANY TABLE TO BD_AM;
 GRANT SELECT ANY TABLE TO BD_EU;
 
 
-
 -- ! RULEAZA CA BD_AM:
 CONNECT BD_AM/parola_am@localhost/homedb1pdb;
 -- Legatura de la America spre Europa

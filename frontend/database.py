@@ -4,15 +4,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Setăm DSN-ul general (presupunând că ambele scheme sunt pe același PDB)
+# setam dsn-ul (schemele sunt pe acelasi pdb)
 DB_DSN = os.getenv("DB_DSN", "localhost:1521/HOMEDB1PDB")
 
 def get_connection(node="AM"):
-    """
-    Returnează conexiunea către schema locală specificată.
-    """
+    # returneaza conexiunea pt schema aleasa
     try:
-        # Selectăm user-ul și parola în funcție de nod
+        # alegem user si parola in functie de nod
         if node == "AM":
             user = "BD_AM"
             password = "parola_am"
@@ -23,7 +21,7 @@ def get_connection(node="AM"):
             user = "BD_GLOBAL"
             password = "parola_global"
         else:
-            raise ValueError("Nod invalid. Alege 'AM', 'EU' sau 'GLOBAL'.")
+            raise ValueError("nod invalid. alege AM, EU sau GLOBAL.")
             
         connection = oracledb.connect(
             user=user,
@@ -32,9 +30,10 @@ def get_connection(node="AM"):
         )
         return connection
     except Exception as e:
-        raise Exception(f"Eroare la conectarea către nodul {node}: {e}")
+        raise Exception(f"eroare la conectarea spre nodul {node}: {e}")
 
 def run_query(connection, query, params=None):
+    # functia asta ruleaza select-uri
     cursor = connection.cursor()
     try:
         if params:
@@ -49,6 +48,7 @@ def run_query(connection, query, params=None):
         cursor.close()
 
 def run_statement(connection, statement, params=None):
+    # functia asta ruleaza insert/update/delete
     cursor = connection.cursor()
     try:
         if params:

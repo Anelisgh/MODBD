@@ -1,7 +1,10 @@
--- ! RULEAZA CA BD_GLOBAL:
+-- Crearea vederilor pentru transparenta globala
+-- Unim fragmentele orizontale si verticale
+
+--BD_GLOBAL
 CONNECT BD_GLOBAL/parola_global@localhost/homedb1pdb;
 
--- A. RECONSTRUCȚIA FRAGMENTELOR ORIZONTALE (Reuniune / UNION ALL)
+-- Refacem fragmentele orizontale prin reuniune
 CREATE OR REPLACE VIEW V_REZERVARE AS
 SELECT * FROM REZERVARE_AM@link_bd_am
 UNION ALL
@@ -17,8 +20,7 @@ SELECT * FROM BILET_AM@link_bd_am
 UNION ALL
 SELECT * FROM BILET_EU@link_bd_eu;
 
-
--- B. RECONSTRUCȚIA FRAGMENTULUI VERTICAL (Compunere / JOIN)
+-- Refacem utilizatorul prin join intre fragmentele verticale
 CREATE OR REPLACE VIEW V_UTILIZATOR AS
 SELECT 
     s.id_user, 
@@ -31,12 +33,8 @@ SELECT
     s.rol
 FROM UTILIZATOR_SEC@link_bd_am s
 JOIN UTILIZATOR_DATA@link_bd_am d ON s.id_user = d.id_user;
--- (Ambele fragmente există pe AM, deci e mai eficient să facem join-ul direct pe acel server)
 
-
--- C. ACCESUL LA TABELELE REPLICATE ȘI UNICE (Sinonime)
--- Pentru datele care sunt identice pe ambele servere, sau care stau într-un singur loc, 
--- creăm pur și simplu un sinonim către nodul principal (AM).
+-- Punem sinonime pentru tabelele replicate (le luam de pe nodul principal AM)
 CREATE OR REPLACE SYNONYM TARA FOR TARA@link_bd_am;
 CREATE OR REPLACE SYNONYM ORAS FOR ORAS@link_bd_am;
 CREATE OR REPLACE SYNONYM AEROPORT FOR AEROPORT@link_bd_am;
@@ -44,12 +42,8 @@ CREATE OR REPLACE SYNONYM AVION FOR AVION@link_bd_am;
 CREATE OR REPLACE SYNONYM ZBOR FOR ZBOR@link_bd_am;
 CREATE OR REPLACE SYNONYM PASAGER FOR PASAGER@link_bd_am;
 
-
--- D. TRIGGERE INSTEAD OF (LMD pe view-uri non-actualizabile)
--- Permit operatii UPDATE pe view-urile globale, rutand modificarile
--- catre fragmentele locale corecte prin Database Link.
-
--- D.1 Actualizare rezervare globala: ruteaza spre AM (ID impar) sau EU (ID par)
+-- Triggeri pentru a permite update pe vederi
+-- Update pe rezervare: trimitem la AM daca id-ul e impar, altfel la EU
 CREATE OR REPLACE TRIGGER trg_upd_rezervare_global
 INSTEAD OF UPDATE ON V_REZERVARE
 FOR EACH ROW
@@ -66,8 +60,7 @@ BEGIN
 END;
 /
 
--- D.2 Actualizare utilizator global: scrie in fragmentul UTILIZATOR_DATA de pe AM,
---     de unde trigger-ul trg_sync_utilizator_data_am_eu propaga automat pe EU.
+-- Update pe datele utilizatorului (trimitem pe AM)
 CREATE OR REPLACE TRIGGER trg_upd_utilizator_global
 INSTEAD OF UPDATE ON V_UTILIZATOR
 FOR EACH ROW
@@ -78,4 +71,4 @@ BEGIN
         telefon = :NEW.telefon
     WHERE id_user = :OLD.id_user;
 END;
-/
+/

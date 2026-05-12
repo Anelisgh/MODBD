@@ -8,7 +8,6 @@ CREATE INDEX idx_plata_am_status ON PLATA_AM(id_rezervare, status);
 EXEC DBMS_STATS.GATHER_SCHEMA_STATS('BD_AM', CASCADE => TRUE);
 
 
-
 -- 2. OPERAȚII PE NODUL BD_EU (Europa - Nod Local)
 -- Crearea indecșilor compuși pentru optimizarea filtrării locale
 CREATE INDEX idx_rez_eu_filtru ON REZERVARE_EU(status, data_rezervare);
@@ -18,12 +17,12 @@ CREATE INDEX idx_plata_eu_status ON PLATA_EU(id_rezervare, status);
 EXEC DBMS_STATS.GATHER_SCHEMA_STATS('BD_EU', CASCADE => TRUE);
 
 
-
 -- 3. OPERAȚII PE SCHEMA GLOBALĂ BD_GLOBAL
 
 -- Conectat ca BD_GLOBAL
 -- 7.a Analiza RBO (Rule-Based Optimizer)
 -- Notă: În 21c planul va fi generat tot de CBO, dar folosim comanda pentru cerință
+-- forțează Oracle să folosească Rule-Based Optimizer -> un sist invechit cu o lista stricta de reguli, ignora statisticile de mai sus
 ALTER SESSION SET OPTIMIZER_MODE = RULE;
 
 EXPLAIN PLAN SET STATEMENT_ID = 'RBO_PLAN' FOR
@@ -65,8 +64,8 @@ SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, 'RBO_PLAN', 'ALL'));
 
 
 -- 7.b Analiza CBO (Cost-Based Optimizer)
-ALTER SESSION SET OPTIMIZER_MODE = ALL_ROWS;
-
+ALTER SESSION SET OPTIMIZER_MODE = ALL_ROWS; -- activează Cost-Based Optimizer, setat să returneze întregul set de date cât mai eficient
+-- Folosește statisticile (DBMS_STATS) pentru a evalua costul operațiilor (I/O, CPU, rețea). Generează multiple planuri de execuție și îl alege pe cel cu costul matematic cel mai mic. Standardul industrial actual.
 EXPLAIN PLAN SET STATEMENT_ID = 'CBO_PLAN' FOR
 WITH bilete_ruta AS (
     SELECT b.id_zbor, COUNT(b.id_bilet) AS nr_bilete, SUM(b.pret_final) AS venit_ruta
@@ -104,8 +103,13 @@ FETCH FIRST 10 ROWS ONLY;
 -- Afișare Plan CBO
 SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, 'CBO_PLAN', 'ALL'));
 
-
 -- 7.c Sugestie Optimizare - Cererea SQL Optimizată
+/* În loc să folosească o a doua subcerere greoaie pentru naționalitate (nat_per_zbor), codul optimizat folosește o singură subcerere (agregate) și aplică funcția STATS_MODE(nationalitate). Aceasta extrage direct valoarea cu cea mai mare frecvență. S-a înlocuit o operație costisitoare de partiționare și sortare a ferestrelor de date cu o simplă agregare statistică.
+
+Secvența /*+ LEADING(ag) USE_HASH(...) NO_MERGE(ag) */ suprascrie deciziile optimizatorului CBO, obligându-l să execute interogarea exact într-un anumit fel:
+LEADING(ag): Îi spune bazei de date ca în planul de execuție, tabelul/subcererea cu aliasul ag (agregate) să fie punctul de plecare (tabelul conducător) pentru toate joncțiunile (JOIN-urile) care urmează.
+NO_MERGE(ag): Interzice optimizatorului să "dezintegreze" subcererea agregate în interogarea principală. Oracle este forțat să ruleze prima dată filtrările (ultimele 6 luni, plăți acceptate), să reducă setul de date doar la rândurile relevante, să facă agregările (SUM, COUNT, STATS_MODE) în memorie și abia apoi să ia acest set de date condensat pentru a-l lega cu restul tabelelor.  
+USE_HASH(z av a_dep a_sos o_dep o_sos t_dep t_sos): Odată ce agregate este calculat, obligă Oracle să folosească algoritmul Hash Join pentru a asocia ID-urile obținute cu cele 8 tabele de nomenclator (avioane, aeroporturi, țări etc.). Algoritmul Hash Join creează un tabel de dispersie în memorie și este net superior algoritmului Nested Loops atunci când se procesează rapoarte de date voluminoase.*/
 EXPLAIN PLAN SET STATEMENT_ID = 'OPT_PLAN' FOR
 WITH date_ruta AS (
     SELECT b.id_zbor, b.id_bilet, b.pret_final, pas.nationalitate
